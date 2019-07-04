@@ -26,7 +26,7 @@ app.post('/marketplacehook', function(req,res){
   res.send('ok');
 })
 
- var server = app.listen(port, function () {
+ var server = app.listen(appconfig.port, function () {
     var host = server.address().address
     var port = server.address().port
     
