@@ -1,5 +1,5 @@
 var config={
-    port:8080,
+    port:80,
     marketplaceTenantId:'your tenant id',
     marketplaceClientId:'your client id',
     marketplaceClientSecret:'your client secret',
