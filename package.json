@@ -11,7 +11,9 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
+    "node-uuid": "^1.4.8",
     "passport": "^0.4.0",
-    "passport-azure-ad": "^4.1.0"
+    "passport-azure-ad": "^4.1.0",
+    "request": "^2.88.0"
   }
 }
