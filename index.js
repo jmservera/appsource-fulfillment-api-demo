@@ -16,13 +16,14 @@ var getAuth=function(){
         const loginUri=`https://login.microsoftonline.com/${appconfig.marketplaceTenantId}/oauth2/token`;
         request.get(loginUri,{form:{
           'Grant_type':'client_credentials',
+          'resource':'62d94f6c-d599-489b-a797-3e10e42fbe22',
           'Client_id':appconfig.marketplaceClientId,
           'client_secret':appconfig.marketplaceClientSecret
         }},
           function(err,res,body){
             if(!err){
               const jsonBody= JSON.parse(body);
-              bearer=`Bearer ${jsonBody.access_token}`;
+              bearer=`bearer ${jsonBody.access_token}`;
             }
             callback(bearer,err);
           });
@@ -33,15 +34,15 @@ var getAuth=function(){
   };
 }();
 
+const resolveApi=`https://marketplaceapi.microsoft.com/api/saas/subscriptions/resolve?${appconfig.PC_APIVERSION}`;
+
 app.get('/', function (req, res) {
   const values=JSON.stringify(req.headers);
   if(req.query.token){
     getAuth(function(bearer, authError){
-      const resolveApi=`https://marketplaceapi.microsoft.com/api/saas/subscriptions/resolve?${appconfig.PC_APIVERSION}`;
       const reqid=uuid.v1();
       const corrid=uuid.v1();
       const options={
-        json:'',
         headers:{
           'x-ms-requestid':reqid,
           'x-ms-correlationid':corrid,
@@ -52,8 +53,48 @@ app.get('/', function (req, res) {
       request.post(resolveApi,
         options,
         function(error, response, body){
-          console.log(body);
-          res.send(`${values}\nok`);
+          if(response.statusCode===200){
+            const result=JSON.parse(body);
+            res.write("<html><body>");
+            res.write(`<b>Subscription</b>: ${result.subscriptionName}<br><b>id</b>: ${result.id}`);
+            res.write("<br>");
+            res.write(`<b>Offer</b>: ${result.offerId}<br><b>plan</b>: ${result.planId}<br><b>quantity</b>: ${result.quantity}`)
+            res.write("<br>");
+            res.write("Activating subscription");
+            res.flushHeaders();
+
+            const activateApi=`https://marketplaceapi.microsoft.com/api/saas/subscriptions/${result.id}/activate?${appconfig.PC_APIVERSION}`;
+
+            request.post(activateApi,
+              {
+                'headers':{
+                  'authorization':bearer
+                },
+                'json':{
+                  'x-ms-requestid':reqid,
+                  'x-ms-correlationid':corrid,
+                  'planId':result.planId,
+                  'quantity':result.quantity
+                }
+              },function(activateErr,activateResponse,activateBody){
+                  if(activateResponse.statusCode===200){
+                    res.write("-Activated!")
+                  }
+                  // res.write(activateBody);
+                  res.end();
+                }
+              );
+
+          }
+          else{
+            res.write(body);
+            res.write(`Original x-ms-requestid:${reqid}\n`);
+
+            res.write(`Response headers:\n\t${JSON.stringify(response.headers)}\n`);
+            res.write(`Status: ${response.statusCode}\n`);
+            res.write(`***********\nRequest headers: ${values}\nok`);
+            res.end();
+        }
       });
       console.log(req.query.token);
     });
