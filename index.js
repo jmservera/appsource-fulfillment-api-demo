@@ -59,9 +59,11 @@ async function resolve(token, bearer){
 
 const resolveApi=`https://marketplaceapi.microsoft.com/api/saas/subscriptions/resolve?${appconfig.PC_APIVERSION}`;
 
-app.get('/', async function (req, res) {
+async function activationFunction(req, res) {
   try{
     res.write("<html><body>");
+    res.write("<h1>Fulfillment API Tests</h1>");
+
     const token=req.query.token;
     if(token){
       let bearer=await getAuth();
@@ -96,12 +98,19 @@ app.get('/', async function (req, res) {
         res.write(`<form action="/changePlan?token=${encodeURIComponent(token)}" method="get"><input type="hidden" id="token" name="token" value="${token}"><input type="submit" value="change plan"></form>`);
       }
     }
+    else{
+      res.write("Call this page with a token to activate your subscription.");
+      res.write("You can get it at the <a href='https://azuremarketplace.microsoft.com/en-us/marketplace/apps/jmservera.jmservera-demo-preview?tab=Overview&flightCodes=c03768aa-a77c-44ec-ab0a-34be1d0aa89b'> Azure Marketplace</a> or ");
+      res.write("directly from the <a href='https://portal.azure.com/?microsoft_azure_marketplace_ItemHideKey=c03768aa-a77c-44ec-ab0a-34be1d0aa89b#create/jmservera.jmservera-demo-preview/preview'>Azure Portal</a>.")
+    }
   } catch(err){
     console.error(err);
     res.write(err.message);
   }
   res.end("</body></html>");
- });
+ }
+
+app.get('/', activationFunction);
 
  app.get('/changePlan',async function(req,res){
   res.write("<html><body>");
@@ -143,12 +152,7 @@ app.get('/', async function (req, res) {
    res.end("</body></html>");
  });
 
-app.get('/Onboarding/ProcessCode',function(req,res){
-
-    if(user===null){
-        
-    }
-})
+app.get('/Onboarding/ProcessCode', activationFunction);
 
 app.get('/marketplacehook', function(req,res){
   console.log("Marketplacehook: "+ JSON.stringify(req));
