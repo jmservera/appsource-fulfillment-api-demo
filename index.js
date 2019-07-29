@@ -34,72 +34,114 @@ var getAuth=function(){
   };
 }();
 
+function resolve(res, token, callback){
+  getAuth(function(bearer, authError){
+    const reqid=uuid.v1();
+    const corrid=uuid.v1();
+    const options={
+      headers:{
+        'x-ms-requestid':reqid,
+        'x-ms-correlationid':corrid,
+        'authorization':bearer,
+        'x-ms-marketplace-token':token
+      }
+    }
+    request.post(resolveApi,
+      options,
+      function(error, response, body){
+        if(response.statusCode===200){
+          const result=JSON.parse(body);
+          callback(result,bearer);
+        }
+        else{
+          res.write(body);
+          res.write(`Original x-ms-requestid:${reqid}\n`);
+
+          res.write(`Response headers:\n\t${JSON.stringify(response.headers)}\n`);
+          res.write(`Status: ${response.statusCode}\n`);
+          res.end();
+      }
+    });
+    console.log(token);
+  });
+}
+
 const resolveApi=`https://marketplaceapi.microsoft.com/api/saas/subscriptions/resolve?${appconfig.PC_APIVERSION}`;
 
 app.get('/', function (req, res) {
-  const values=JSON.stringify(req.headers);
-  if(req.query.token){
-    getAuth(function(bearer, authError){
-      const reqid=uuid.v1();
-      const corrid=uuid.v1();
-      const options={
-        headers:{
-          'x-ms-requestid':reqid,
-          'x-ms-correlationid':corrid,
-          'authorization':bearer,
-          'x-ms-marketplace-token':req.query.token
-        }
-      }
-      request.post(resolveApi,
-        options,
-        function(error, response, body){
-          if(response.statusCode===200){
-            const result=JSON.parse(body);
-            res.write("<html><body>");
-            res.write(`<b>Subscription</b>: ${result.subscriptionName}<br><b>id</b>: ${result.id}`);
-            res.write("<br>");
-            res.write(`<b>Offer</b>: ${result.offerId}<br><b>plan</b>: ${result.planId}<br><b>quantity</b>: ${result.quantity}`)
-            res.write("<br>");
-            res.write("Activating subscription");
-            res.flushHeaders();
+  const token=req.query.token;
+  if(token){
+    resolve(res,token, function(result,bearer){
+        res.write("<html><body>");
+        res.write(`<b>Subscription</b>: ${result.subscriptionName}<br><b>id</b>: ${result.id}`);
+        res.write("<br>");
+        res.write(`<b>Offer</b>: ${result.offerId}<br><b>plan</b>: ${result.planId}<br><b>quantity</b>: ${result.quantity}`)
+        res.write("<br>");
+        res.write("Activating subscription");
+        res.flushHeaders();
 
-            const activateApi=`https://marketplaceapi.microsoft.com/api/saas/subscriptions/${result.id}/activate?${appconfig.PC_APIVERSION}`;
+        const activateApi=`https://marketplaceapi.microsoft.com/api/saas/subscriptions/${result.id}/activate?${appconfig.PC_APIVERSION}`;
+        const reqid=uuid.v1();
+        const corrid=uuid.v1();
 
-            request.post(activateApi,
-              {
-                'headers':{
-                  'authorization':bearer
-                },
-                'json':{
-                  'x-ms-requestid':reqid,
-                  'x-ms-correlationid':corrid,
-                  'planId':result.planId,
-                  'quantity':result.quantity
-                }
-              },function(activateErr,activateResponse,activateBody){
-                  if(activateResponse.statusCode===200){
-                    res.write("-Activated!")
-                  }
-                  // res.write(activateBody);
-                  res.end();
-                }
-              );
-
-          }
-          else{
-            res.write(body);
-            res.write(`Original x-ms-requestid:${reqid}\n`);
-
-            res.write(`Response headers:\n\t${JSON.stringify(response.headers)}\n`);
-            res.write(`Status: ${response.statusCode}\n`);
-            res.write(`***********\nRequest headers: ${values}\nok`);
-            res.end();
-        }
+        request.post(activateApi,
+          {
+            'headers':{
+              'authorization':bearer,
+              'x-ms-requestid':reqid,
+              'x-ms-correlationid':corrid
+            },
+            'json':{
+              'planId':result.planId,
+              'quantity':result.quantity
+            }
+          },function(activateErr,activateResponse,activateBody){
+              if(activateResponse.statusCode===200){
+                res.write("-Activated!");
+      
+                res.write(`<form action="/changePlan?token=${encodeURIComponent(token)}" method="get"><input type="hidden" id="token" name="token" value="${token}"><input type="submit" value="change plan"></form>`);
+              }
+              res.write("</body></html>");
+              res.end();
+          });
       });
-      console.log(req.query.token);
+  }
+ });
+
+ app.get('/changePlan',function(req,res){
+  const token=req.query.token;
+  if(token){
+    resolve(res,token, function(result,bearer){
+      res.write("<html><body>");
+        res.write(`<b>Subscription</b>: ${result.subscriptionName}<br><b>id</b>: ${result.id}`);
+        res.write("<br>");
+        res.write(`<b>Offer</b>: ${result.offerId}<br><b>plan</b>: ${result.planId}<br><b>quantity</b>: ${result.quantity}`)
+        res.write("<br><b>Plans</b>:");
+
+        const listPlansApi=`https://marketplaceapi.microsoft.com/api/saas/subscriptions/${result.id}/listAvailablePlans?${appconfig.PC_APIVERSION}`;
+        const getSubscriptionApi=`https://marketplaceapi.microsoft.com/api/saas/subscriptions/${result.id}?${appconfig.PC_APIVERSION}`;
+
+        const reqid=uuid.v1();
+        const corrid=uuid.v1();
+
+        request.get(listPlansApi,
+          {
+            'headers':{
+              'authorization':bearer,
+              'x-ms-requestid':reqid,
+              'x-ms-correlationid':corrid,
+              'Content-type':'application/json'
+            }
+          },function(listErr,listResponse,listBody){
+ //           const plans= JSON.parse(listBody);
+            res.write(JSON.stringify(listBody));// JSON.stringify(plans));
+            res.write("</body></html>");
+            res.end();
+          });
+
     });
   }
- })
+ });
 
 app.get('/Onboarding/ProcessCode',function(req,res){
 
