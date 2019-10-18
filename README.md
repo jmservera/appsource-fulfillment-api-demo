@@ -1,5 +1,7 @@
 # appsource-fulfillment-api-demo
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=appsource-fulfillment-api-demo&metric=alert_status)](https://sonarcloud.io/dashboard?id=appsource-fulfillment-api-demo)
+
 Just some demo code for the [SaaS Fulfillment APIs](https://docs.microsoft.com/en-us/azure/marketplace/partner-center-portal/pc-saas-fulfillment-apis)
 
 Features implemented so far:
