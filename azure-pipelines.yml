@@ -14,8 +14,19 @@ steps:
   inputs:
     versionSpec: '10.x'
   displayName: 'Install Node.js'
+- task: SonarCloudPrepare@1
+  inputs:
+    SonarCloud: 'sonarCloud'
+    organization: 'jmservera'
+    scannerMode: 'CLI'
+    configMode: 'manual'
+    cliProjectKey: 'appsource-fulfillment-api-demo'
+    cliProjectName: 'Fulfillment api demo'
+    cliSources: '.'
 
 - script: |
     npm install
     npm run build
   displayName: 'npm install and build'
+
+- task: SonarCloudAnalyze@1
